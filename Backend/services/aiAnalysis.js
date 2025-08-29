@@ -1,33 +1,64 @@
-// AI-powered threat analysis service
-// This is a simplified implementation for MVP - in production would use ML models
+// AI-powered threat analysis service using BlueGuard ML models
+import BlueGuardAIIntegration from './aiIntegration.js';
+
+const aiIntegration = new BlueGuardAIIntegration();
 
 export const analyzeThreat = async (threatData) => {
   try {
-    const analysis = {
-      threat_level: 'medium',
-      confidence: 0.8,
-      predictions: [],
-      recommendations: [],
-      risk_factors: []
+    // Prepare comprehensive input data for AI analysis
+    const aiInputData = {
+      weather: threatData.weather?.current ? {
+        wind_speed: threatData.weather.current.wind_speed || 10,
+        pressure: threatData.weather.current.pressure || 1013,
+        temperature: threatData.weather.current.temperature || 25,
+        tide_height: threatData.tides?.current_tide?.height_meters || 2.0,
+        wave_height: calculateWaveHeight(threatData.weather.current.wind_speed || 10)
+      } : null,
+      
+      coastal: threatData.coastal ? {
+        wave_energy: calculateWaveEnergy(threatData.weather?.current?.wind_speed || 10),
+        sediment_type: threatData.coastal.sediment_type || 'sand',
+        vegetation_cover: threatData.coastal.vegetation_cover || 50,
+        slope_angle: threatData.coastal.slope_angle || 10,
+        storm_frequency: threatData.coastal.storm_frequency || 3
+      } : null,
+      
+      ecosystem: threatData.ecosystem ? {
+        water_quality: threatData.ecosystem.water_quality || 75,
+        pollution_levels: threatData.ecosystem.pollution_levels || 2,
+        human_activity: threatData.ecosystem.human_activity || 5,
+        climate_factors: threatData.ecosystem.climate_factors || 0,
+        biodiversity_index: threatData.ecosystem.biodiversity_index || 70,
+        carbon_storage: threatData.ecosystem.carbon_storage || 100
+      } : null,
+      
+      historical_weather: threatData.historical_weather || []
     };
 
-    // Analyze weather conditions
-    const weatherRisk = analyzeWeatherRisk(threatData.weather);
-    analysis.risk_factors.push(...weatherRisk.factors);
+    // Get comprehensive AI analysis
+    const aiAnalysis = await aiIntegration.comprehensiveAnalysis(aiInputData);
 
-    // Analyze tide conditions
-    const tideRisk = analyzeTideRisk(threatData.tides);
-    analysis.risk_factors.push(...tideRisk.factors);
+    // Transform AI results to expected format
+    const analysis = {
+      threat_level: aiAnalysis.overall_risk,
+      confidence: aiAnalysis.confidence,
+      predictions: await generateEnhancedPredictions(aiAnalysis, threatData),
+      recommendations: aiAnalysis.recommendations || [],
+      risk_factors: extractRiskFactors(aiAnalysis),
+      ai_analysis: aiAnalysis,
+      source: aiAnalysis.source
+    };
 
-    // Generate 72-hour predictions
-    analysis.predictions = generatePredictions(threatData);
+    // Add legacy risk factor analysis for backward compatibility
+    if (threatData.weather) {
+      const weatherRisk = analyzeWeatherRisk(threatData.weather);
+      analysis.risk_factors.push(...weatherRisk.factors);
+    }
 
-    // Calculate overall threat level
-    analysis.threat_level = calculateThreatLevel(analysis.risk_factors);
-    analysis.confidence = calculateConfidence(threatData);
-
-    // Generate recommendations
-    analysis.recommendations = generateRecommendations(analysis.threat_level, analysis.risk_factors);
+    if (threatData.tides) {
+      const tideRisk = analyzeTideRisk(threatData.tides);
+      analysis.risk_factors.push(...tideRisk.factors);
+    }
 
     return analysis;
 
@@ -42,6 +73,102 @@ export const analyzeThreat = async (threatData) => {
       error: 'AI analysis failed'
     };
   }
+};
+
+// Enhanced prediction generation using AI insights
+const generateEnhancedPredictions = async (aiAnalysis, threatData) => {
+  const predictions = [];
+  const currentTime = new Date();
+
+  // Generate 72-hour predictions
+  for (let hour = 1; hour <= 72; hour++) {
+    const predictionTime = new Date(currentTime.getTime() + hour * 60 * 60 * 1000);
+    
+    let threatLevel = 'low';
+    let confidence = 0.7;
+
+    // Use AI weather predictions if available
+    if (aiAnalysis.threats?.weather_forecast?.predictions) {
+      const weatherPred = aiAnalysis.threats.weather_forecast.predictions.find(p => p.hour_offset === hour);
+      if (weatherPred) {
+        // Adjust threat level based on predicted temperature changes
+        const tempChange = Math.abs(weatherPred.temperature - (threatData.weather?.current?.temperature || 25));
+        if (tempChange > 10) threatLevel = 'high';
+        else if (tempChange > 5) threatLevel = 'medium';
+        
+        confidence = aiAnalysis.threats.weather_forecast.confidence;
+      }
+    }
+
+    // Factor in storm surge predictions
+    if (aiAnalysis.threats?.storm_surge) {
+      const surgeRisk = aiAnalysis.threats.storm_surge.risk_level;
+      if (['high', 'critical'].includes(surgeRisk)) {
+        threatLevel = surgeRisk;
+        confidence = Math.min(confidence, aiAnalysis.threats.storm_surge.confidence);
+      }
+    }
+
+    predictions.push({
+      timestamp: predictionTime.toISOString(),
+      threat_level: threatLevel,
+      confidence: confidence,
+      hour_offset: hour,
+      factors: {
+        storm_surge: aiAnalysis.threats?.storm_surge?.surge_height || 0,
+        erosion_risk: aiAnalysis.threats?.coastal_erosion?.risk_level || 'low',
+        blue_carbon_threat: aiAnalysis.threats?.blue_carbon?.threat_level || 'minimal'
+      }
+    });
+  }
+
+  return predictions;
+};
+
+// Extract risk factors from AI analysis
+const extractRiskFactors = (aiAnalysis) => {
+  const riskFactors = [];
+
+  if (aiAnalysis.threats?.storm_surge) {
+    const surge = aiAnalysis.threats.storm_surge;
+    if (surge.surge_height > 1.0) {
+      riskFactors.push(`High storm surge predicted: ${surge.surge_height.toFixed(2)}m`);
+    }
+    if (surge.risk_level === 'critical') {
+      riskFactors.push('Critical storm surge conditions detected');
+    }
+  }
+
+  if (aiAnalysis.threats?.coastal_erosion) {
+    const erosion = aiAnalysis.threats.coastal_erosion;
+    if (['high', 'critical'].includes(erosion.risk_level)) {
+      riskFactors.push(`${erosion.risk_level.charAt(0).toUpperCase() + erosion.risk_level.slice(1)} coastal erosion risk`);
+    }
+  }
+
+  if (aiAnalysis.threats?.blue_carbon) {
+    const blueCarbon = aiAnalysis.threats.blue_carbon;
+    if (['significant', 'severe'].includes(blueCarbon.threat_level)) {
+      riskFactors.push(`${blueCarbon.threat_level.charAt(0).toUpperCase() + blueCarbon.threat_level.slice(1)} blue carbon ecosystem threat`);
+    }
+    if (blueCarbon.carbon_loss_estimate?.potential_loss_tons_co2 > 50) {
+      riskFactors.push(`Potential carbon loss: ${blueCarbon.carbon_loss_estimate.potential_loss_tons_co2.toFixed(1)} tons CO₂`);
+    }
+  }
+
+  return riskFactors;
+};
+
+// Helper function to calculate wave height from wind speed
+const calculateWaveHeight = (windSpeed) => {
+  // Simplified wave height calculation
+  return Math.max(0, 0.3 * windSpeed + Math.random() * 0.5);
+};
+
+// Helper function to calculate wave energy
+const calculateWaveEnergy = (windSpeed) => {
+  // Wave energy increases with square of wind speed
+  return Math.pow(windSpeed / 10, 2) * 5;
 };
 
 // Analyze weather-related risks

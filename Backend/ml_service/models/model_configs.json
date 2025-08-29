@@ -1,0 +1,35 @@
+{
+  "storm_surge": {
+    "type": "regression",
+    "features": [
+      "wind_speed",
+      "pressure",
+      "tide_height",
+      "wave_height",
+      "temperature"
+    ],
+    "target": "surge_height"
+  },
+  "coastal_erosion": {
+    "type": "classification",
+    "features": [
+      "wave_energy",
+      "sediment_type",
+      "vegetation_cover",
+      "slope_angle",
+      "storm_frequency"
+    ],
+    "target": "erosion_risk_level"
+  },
+  "blue_carbon_threat": {
+    "type": "multiclass",
+    "features": [
+      "water_quality",
+      "pollution_levels",
+      "human_activity",
+      "climate_factors",
+      "biodiversity_index"
+    ],
+    "target": "threat_category"
+  }
+}
