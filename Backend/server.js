@@ -12,6 +12,7 @@ import threatRoutes from './routes/threats.js';
 import alertRoutes from './routes/alerts.js';
 import dashboardRoutes from './routes/dashboard.js';
 import userRoutes from './routes/users.js';
+import aiRoutes from './routes/ai.js';
 
 // Import middleware
 import { authenticateToken } from './middleware/auth.js';
@@ -62,11 +63,12 @@ app.use('/api/threats', threatRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: 'OceanEye API - AI-Powered Coastal Threat Detection',
+    message: 'BlueGuard API - AI-Powered Coastal Threat Detection & Blue Carbon Protection',
     version: '1.0.0',
     endpoints: {
       health: '/health',
@@ -74,7 +76,15 @@ app.get('/', (req, res) => {
       threats: '/api/threats',
       alerts: '/api/alerts',
       dashboard: '/api/dashboard',
-      users: '/api/users'
+      users: '/api/users',
+      ai: '/api/ai'
+    },
+    ai_capabilities: {
+      storm_surge_prediction: '/api/ai/predict/storm-surge',
+      coastal_erosion_analysis: '/api/ai/predict/coastal-erosion',
+      blue_carbon_threats: '/api/ai/predict/blue-carbon',
+      weather_forecasting: '/api/ai/predict/weather',
+      comprehensive_analysis: '/api/ai/analyze/comprehensive'
     }
   });
 });
